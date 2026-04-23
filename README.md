@@ -9,12 +9,10 @@ from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 
-# --- 1. SİSTEM AYARLARI (GİTHUB/BULUT UYUMLU) ---
-# Linux sunucularda ImageMagick yolu budur
+# --- 1. SİSTEM AYARLARI (GİTHUB UYUMLU) ---
 IMAGEMAGICK_EXE = "/usr/bin/convert"
 change_settings({"IMAGEMAGICK_BINARY": IMAGEMAGICK_EXE})
 
-# Dosya yolları (Robot, dosyaları botla aynı klasörde arar)
 CLIENT_SECRET = "client_secret.json"
 VIDEO_IN = "video.mp4" 
 AUDIO_IN = "muzik.mp3"
@@ -26,14 +24,15 @@ def siradaki_sozu_al():
     if not os.path.exists(PROGRESS_FILE):
         with open(PROGRESS_FILE, "w") as f: f.write("0")
     with open(PROGRESS_FILE, "r") as f:
-        index = int(f.read().strip())
+        content = f.read().strip()
+        index = int(content) if content else 0
     
     if not os.path.exists(SOZLER_DOSYASI): return "PES ETME!"
     
     with open(SOZLER_DOSYASI, "r", encoding="utf-8") as f:
         lines = f.readlines()
     
-    if index >= len(lines): index = 0 # 1000 söz bitince başa dön
+    if index >= len(lines): index = 0
         
     line = lines[index].strip()
     soz = line.split(". ", 1)[-1] if ". " in line else line
@@ -45,11 +44,7 @@ def siradaki_sozu_al():
 def kurgu_yap(soz):
     print(f"🎬 İşleniyor: {soz}")
     out_path = "final_video.mp4"
-    
-    # Dosya kontrolleri
-    if not all(os.path.exists(f) for f in [VIDEO_IN, AUDIO_IN]):
-        print("❌ Dosyalar eksik!")
-        return None
+    if not os.path.exists(VIDEO_IN): return None
 
     clip = VideoFileClip(VIDEO_IN)
     music = AudioFileClip(AUDIO_IN).subclip(0, clip.duration).volumex(0.3)
@@ -66,7 +61,7 @@ def kurgu_yap(soz):
         music.close()
         return out_path
     except Exception as e:
-        print(f"⚠️ Kurgu hatası: {e}")
+        print(f"Hata: {e}")
         return None
 
 # --- 4. YOUTUBE YÜKLEME ---
@@ -75,24 +70,22 @@ def youtube_yukle(video_path, soz):
     if os.path.exists('token.json'):
         with open('token.json', 'rb') as token: creds = pickle.load(token)
             
-    if not creds or not creds.valid:
-        print("❌ Token hatası! GitHub'da manuel giriş yapılamaz.")
-        return
+    if not creds or not creds.valid: return
 
     yt = build('youtube', 'v3', credentials=creds)
     body = {
         'snippet': {
             'title': f"{soz[:50]}... #motivasyon #shorts",
-            'description': "Pes etmek senin lügatinde yok. #başarı #disiplin",
+            'description': "Pes etmek yok. #başarı #disiplin",
             'categoryId': '22'
         },
         'status': {'privacyStatus': 'public'}
     }
     media = MediaFileUpload(video_path, chunksize=-1, resumable=True)
     yt.videos().insert(part='snippet,status', body=body, media_body=media).execute()
-    print("🚀 Video YouTube'a uçtu!")
+    print("🚀 Video paylaşıldı!")
 
-# --- 5. ANA TETİKLEYİCİ (DÖNGÜSÜZ) ---
+# --- 5. ANA ÇALIŞTIRICI (DÖNGÜSÜZ) ---
 if __name__ == "__main__":
     soz = siradaki_sozu_al()
     if soz:
