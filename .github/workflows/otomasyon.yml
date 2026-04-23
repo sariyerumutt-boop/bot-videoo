@@ -1,0 +1,25 @@
+name: Video Botu
+on:
+  schedule:
+    - cron: '*/1440 * * * *'
+  workflow_dispatch:
+
+jobs:
+  run-bot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Kurulum
+        run: |
+          sudo apt-get update
+          sudo apt-get install imagemagick -y
+          pip install moviepy google-auth-oauthlib google-api-python-client
+      - name: Calistir
+        run: python ana_bot.py
+      - name: Durumu Kaydet
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add siradaki_soz.txt
+          git commit -m "Sira guncellendi" || echo "No changes"
+          git push
